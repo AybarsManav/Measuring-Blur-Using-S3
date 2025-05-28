@@ -12,7 +12,9 @@ from sys import argv
 
 import numpy as np
 from skimage.feature import canny
-from octave import sobel
+from .octave import sobel
+# If you want to run this script comment the line above and directly use the following line:
+# from octave import sobel
 
 import cv2 as cv
 import os
@@ -34,7 +36,7 @@ BLOCK_HEIGHT, BLOCK_WIDTH = (64, 64)
 WIDTH_JNB = np.concatenate([5*np.ones(51), 3*np.ones(205)])
 
 
-def compute(image):
+def compute_cpbd(image):
     # type: (numpy.ndarray) -> float
     """Compute the sharpness metric for the given data."""
 
@@ -212,6 +214,6 @@ def get_block_contrast(block):
 
 
 if __name__ == '__main__':
-    img = cv.imread("tid2008/filtered_images/I23_08_4.bmp", cv.IMREAD_GRAYSCALE)
+    img = cv.imread("tid2008/filtered_images/I23_08_1.bmp", cv.IMREAD_GRAYSCALE)
     CPBD = compute(img)
     print("CPBD: ", CPBD)

@@ -2,8 +2,6 @@ import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 
-print( cv.__version__ )
-
 def display_float_image(image):
     # Normalize the image to the range [0, 255]
     norm_image = cv.normalize(image, None, 0, 255, cv.NORM_MINMAX)
@@ -125,11 +123,6 @@ class S3:
         if mean_val < T2:
             return False
         return True
-
-    def compute_slope(self, image):
-        # Compute the slope of the image
-        # This is a placeholder for the actual slope computation
-        pass
 
     def compute_magnitude_spectrum(self, image):
         # Compute the magnitude spectrum of the image
