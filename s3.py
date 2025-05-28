@@ -15,13 +15,20 @@ def display_float_image(image):
 class S3:
 
     def compute_s3(self, image):
-
         # Convert the image to grayscale
         gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
         gray = gray.astype(np.float32)
-        self.compute_s1(gray)
-        pass
-    
+        s1 = self.compute_s1(gray)
+        s2 = self.compute_s2(gray)
+        # Take the geometric mean of s1 and s2
+        s3 = np.sqrt(s1) * np.sqrt(s2)
+        # Compute single number s3
+        s3_tilde = np.sort(s3, axis=None)[::-1] # Sort the values in s3 descendingly
+        s3_tilde = s3_tilde[0:int(len(s3_tilde) * 0.01)] # Take the first 1% of the values
+        s3_single = np.mean(s3_tilde) # Compute the mean of the first 1% of the values
+
+        return s1, s2, s3, s3_single
+        
     def compute_s1(self, image):
         block_size = 32 # Size of each block
         stride = block_size // 4 # Stride for blocks
@@ -61,9 +68,44 @@ class S3:
                 # print("Alpha:", -alpha)
                 # display_float_image(block)
 
-        display_float_image(s1)
+        s1 = s1[block_size // 2:height - block_size // 2, block_size // 2:width - block_size // 2] # Remove padding
+        # display_float_image(s1)
         return s1
+    
+    def compute_s2(self, image):
+        block_size = 8 # Size of each block
+        stride = block_size // 2 # Stride for blocks (4 pixels overlap)
+        # Pad image with half of block size using reflection
+        padded_image = cv.copyMakeBorder(image, block_size // 2, block_size // 2, block_size // 2, block_size // 2, cv.BORDER_REFLECT)
+        height, width = padded_image.shape[:2]
+        s2 = np.zeros((height, width), dtype=np.float32)
+        for row in range(stride, height - stride, stride):
+            for col in range(stride, width - stride, stride):
+                # Extract the block
+                block = padded_image[row -  stride:row + stride, col -  stride:col + stride]
+                # Measure total variation of every 2x2 smaller blocks in block
+                sub_block_tv = []
+                for i in range(0, block_size-1):
+                    for j in range(0, block_size-1):
+                        # Get the 2x2 block
+                        sub_block = block[i:i+2, j:j+2]
+                        # Compute the total variation
+                        tv = np.sum(np.abs(sub_block[0, 0] - sub_block[0, 1])) + \
+                            np.sum(np.abs(sub_block[0, 1] - sub_block[1, 1])) + \
+                            np.sum(np.abs(sub_block[1, 1] - sub_block[1, 0])) + \
+                            np.sum(np.abs(sub_block[1, 0] - sub_block[0, 0])) + \
+                            np.sum(np.abs(sub_block[0, 0] - sub_block[1, 1])) + \
+                            np.sum(np.abs(sub_block[0, 1] - sub_block[1, 0]))
+                        sub_block_tv.append(tv / 255 ) # Normalize the sub_block total variation by 255
+                # Take maximum and normalize by 4 (since it is the largest TV possible in a 2x2 block)
+                max_tv = np.max(sub_block_tv) / 4
+                # Set the value in the s2 map
+                s2[row -  stride:row + stride, col -  stride:col + stride] = max_tv
 
+        s2 = s2[stride:height - stride, stride:width - stride]  # Remove padding
+        # display_float_image(s2)
+        return s2
+                        
     def asses_contrast(self, image):
         # Transform image intensities according to paper
         b = 0.7656
@@ -164,11 +206,38 @@ class S3:
         # Sigmoid function used to transform the slope in the paper
         return 1 - 1 / (1 + np.exp(-3 * (x - 2)))
 
-
-
 if __name__ == "__main__":
     s3 = S3()
     image = cv.imread("tid2008/filtered_images/I23_08_1.bmp")
 
-    s3.compute_s3(image)
+    [s1, s2, s3, s3_metric] = s3.compute_s3(image)
+    # Show original image and computed maps in a single figure
+    def display_float_image_for_plt(img, cmap='gray'):
+        norm_img = cv.normalize(img, None, 0, 1, cv.NORM_MINMAX, dtype=cv.CV_32F)
+        return norm_img
 
+    plt.figure(figsize=(12, 6))
+    plt.subplot(1, 4, 1)
+    plt.imshow(cv.cvtColor(image, cv.COLOR_BGR2RGB))
+    plt.title("Original")
+    plt.axis("off")
+
+    plt.subplot(1, 4, 2)
+    plt.imshow(display_float_image_for_plt(s1), cmap='gray')
+    plt.title("S1")
+    plt.axis("off")
+
+    plt.subplot(1, 4, 3)
+    plt.imshow(display_float_image_for_plt(s2), cmap='gray')
+    plt.title("S2")
+    plt.axis("off")
+
+    plt.subplot(1, 4, 4)
+    plt.imshow(display_float_image_for_plt(s3), cmap='gray')
+    plt.title("S3")
+    plt.axis("off")
+
+    plt.tight_layout()
+    plt.show()
+
+    print("S3 Metric:", s3_metric)
