@@ -34,6 +34,7 @@ class S3:
         padded_image = cv.copyMakeBorder(image, block_size // 2, block_size // 2, block_size // 2, block_size // 2, cv.BORDER_REFLECT)
         height, width = padded_image.shape[:2]
         s1 = np.zeros((height, width), dtype=np.float32)
+        # counts = np.zeros((height, width), dtype=np.int32)  # To count the number of blocks that covers each pixel
         for row in range(block_size // 2, height - block_size // 2, stride):
             for col in range(block_size // 2, width - block_size // 2, stride):
                 # Extract the block
@@ -54,6 +55,9 @@ class S3:
                 y = alpha * x + beta
 
                 s1[row -  (stride//2):row + (stride//2), col - (stride//2):col + (stride//2)] = self.sigmoid(-alpha)
+                # s1[row -  (block_size // 2):row + (block_size // 2), col -  (block_size // 2):col + (block_size // 2)] = self.sigmoid(-alpha)
+                # counts[row -  (block_size // 2):row + (block_size // 2), col -  (block_size // 2):col + (block_size // 2)] += 1
+
                 # Visualize the radial magnitude spectrum
                 # plt.plot(log_frequencies, log_magnitudes, label="Original Data")
                 # plt.plot(x, y, label="Fitted Line", linestyle="--")
@@ -66,7 +70,11 @@ class S3:
                 # print("Alpha:", -alpha)
                 # display_float_image(block)
 
-        s1 = s1[block_size // 2:height - block_size // 2, block_size // 2:width - block_size // 2] # Remove padding
+        # Normalize by the number of blocks that covers each pixel
+        # s1 /= np.maximum(counts, 1)
+
+        # Remove padding
+        s1 = s1[block_size // 2:height - (block_size // 2), block_size // 2:width - (block_size // 2)] # Remove padding
         # display_float_image(s1)
         return s1
     
@@ -77,6 +85,7 @@ class S3:
         padded_image = cv.copyMakeBorder(image, block_size // 2, block_size // 2, block_size // 2, block_size // 2, cv.BORDER_REFLECT)
         height, width = padded_image.shape[:2]
         s2 = np.zeros((height, width), dtype=np.float32)
+        # counts = np.zeros((height, width), dtype=np.int32)  # To count the number of blocks that covers each pixel
         for row in range(stride, height - stride, stride):
             for col in range(stride, width - stride, stride):
                 # Extract the block
@@ -99,8 +108,14 @@ class S3:
                 max_tv = np.max(sub_block_tv) / 4
                 # Set the value in the s2 map
                 s2[row -  (stride//2):row + (stride//2), col -  (stride//2):col + (stride//2)] = max_tv
+                # s2[row -  stride:row + stride, col -  stride:col + stride] += max_tv
+                # counts[row -  stride:row + stride, col -  stride:col + stride] += 1
 
-        s2 = s2[(stride//2):height - (stride//2), (stride//2):width - (stride//2)]  # Remove padding
+        # Average the values in s2 by the number of blocks that covers each pixel
+        # s2 /= np.maximum(counts, 1)
+
+        # Remove padding
+        s2 = s2[( block_size // 2):height - ( block_size // 2), (block_size//2):width - (block_size//2)]  # Remove padding
         # display_float_image(s2)
         return s2
                         
