@@ -40,7 +40,7 @@ class S3:
                 block = padded_image[row -  block_size // 2:row + block_size // 2, col -  block_size // 2:col + block_size // 2]
                 # Check contrast
                 if not self.asses_contrast(block):
-                    s1[row -  stride:row + stride, col -  stride:col + stride] = 0
+                    s1[row - (stride//2):row + (stride//2), col -  (stride//2):col + (stride//2)] = 0
                     continue
 
                 mag_F = self.compute_magnitude_spectrum(block)
@@ -53,7 +53,7 @@ class S3:
                 x = np.linspace(log_frequencies[0], log_frequencies[-1], 100)
                 y = alpha * x + beta
 
-                s1[row -  stride:row + stride, col -  stride:col + stride] = self.sigmoid(-alpha)
+                s1[row -  (stride//2):row + (stride//2), col - (stride//2):col + (stride//2)] = self.sigmoid(-alpha)
                 # Visualize the radial magnitude spectrum
                 # plt.plot(log_frequencies, log_magnitudes, label="Original Data")
                 # plt.plot(x, y, label="Fitted Line", linestyle="--")
@@ -98,9 +98,9 @@ class S3:
                 # Take maximum and normalize by 4 (since it is the largest TV possible in a 2x2 block)
                 max_tv = np.max(sub_block_tv) / 4
                 # Set the value in the s2 map
-                s2[row -  stride:row + stride, col -  stride:col + stride] = max_tv
+                s2[row -  (stride//2):row + (stride//2), col -  (stride//2):col + (stride//2)] = max_tv
 
-        s2 = s2[stride:height - stride, stride:width - stride]  # Remove padding
+        s2 = s2[(stride//2):height - (stride//2), (stride//2):width - (stride//2)]  # Remove padding
         # display_float_image(s2)
         return s2
                         

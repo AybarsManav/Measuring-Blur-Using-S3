@@ -35,8 +35,64 @@ BLOCK_HEIGHT, BLOCK_WIDTH = (64, 64)
 # just noticeable widths based on the perceptual experiments
 WIDTH_JNB = np.concatenate([5*np.ones(51), 3*np.ones(205)])
 
+def compute_cpbd_blur_map_and_score(image):
+    """ Compute a blur map and a single score for the whole image """
+    blur_map = compute_cpbd_blur_map(image)
+    score = compute(image)
+    return blur_map, score
 
-def compute_cpbd(image):
+def compute_cpbd_blur_map(image, pad_size=32):
+    """ According to the paper "S3: A Spectral and Spatial Measure of Local
+    Perceived Sharpness in Natural Images" by Cuong T. Vu et al., applying 
+    cpbd on overlapping 64x64 patches of the image, a blur map can be generated
+    for comparison with S3. """
+
+    block_size = 64
+    stride = 8 # 56 pixels overlap according to the paper
+    # Pad the image with reflective padding to avoid edge effects
+    padded_image = cv.copyMakeBorder(image, pad_size, pad_size, pad_size, pad_size, cv.BORDER_REFLECT)
+    cv.imshow("Padded Image", padded_image)
+    cv.waitKey(0)
+    height, width = padded_image.shape
+    padded_image = padded_image.astype(np.float64)
+    # In this implementation, we compute the edge map using the whole image and then
+    # use blocks of the edge maps. This is done because in small images, edge detectors
+    # are too sensitive and even smooth patches can be detected as edges.
+    canny_edges = canny(padded_image.astype(np.uint8))
+    sobel_edges = sobel(padded_image)
+    # cv.imshow("sobel_edges", sobel_edges.astype(np.uint8) * 255)
+    # cv.imshow("canny_edges", canny_edges.astype(np.uint8) * 255)
+    # cv.waitKey(0)
+    blur_map = np.zeros((height, width), dtype=np.float64)
+    count_map = np.zeros((height, width), dtype=np.int32)
+    for row in range(pad_size, height - pad_size, stride):
+        for col in range(pad_size, width - pad_size, stride):
+            # Get blocks of the image and the edge maps
+            block = padded_image[row - pad_size:row + pad_size, col - pad_size:col + pad_size]
+            canny_block = canny_edges[row - pad_size:row + pad_size, col - pad_size:col + pad_size]
+            sobel_block = sobel_edges[row - pad_size:row + pad_size, col - pad_size:col + pad_size]
+            # Compute the CPBD value for the block
+            cpbd_value = compute_for_blockwise_cpbd(block, canny_block, sobel_block)
+            # Instead of updating only the center, accumulate the CPBD values from surrounding blocks
+            # This is done to avoid edge effects and to ensure that the blur map is smooth
+            # blur_map[row - (stride//2):row + (stride//2), col - (stride//2):col + (stride//2)] = cpbd_value
+            # Update the blur map and count map
+            blur_map[row - pad_size:row + pad_size, col - pad_size:col + pad_size] += cpbd_value
+            count_map[row - pad_size:row + pad_size, col - pad_size:col + pad_size] += 1
+    # Normalize the blur map by the count map to get the average CPBD value
+    blur_map /= np.maximum(count_map, 1)  # Avoid division by zero
+
+    # Crop the blur map to the original image size
+    return blur_map[pad_size:-pad_size, pad_size:-pad_size]
+
+def compute_for_blockwise_cpbd(block, canny_block, sobel_block):
+    # edge width calculation
+    marziliano_widths = marziliano_method(sobel_block, block)
+
+    # sharpness metric calculation
+    return _calculate_sharpness_metric(block, canny_block, marziliano_widths)
+
+def compute(image):
     # type: (numpy.ndarray) -> float
     """Compute the sharpness metric for the given data."""
 
@@ -46,7 +102,12 @@ def compute_cpbd(image):
     # edge detection using canny and sobel canny edge detection is done to
     # classify the blocks as edge or non-edge blocks and sobel edge
     # detection is done for the purpose of edge width measurement.
-    canny_edges = canny(image)
+
+    # NOTE: This canny use is wrong. Because for hysteresis, this function uses
+    # dtype's maximum value which is incredibly high for float64.
+    # We pass as uint8 instead for better results. -Aybars and Jelena
+    # canny_edges = canny(image) 
+    canny_edges = canny(image.astype(np.uint8)) 
     sobel_edges = sobel(image)
 
     # edge width calculation
@@ -197,6 +258,8 @@ def _calculate_sharpness_metric(image, edges, edge_widths):
     # normalize the pdf
     if total_num_edges > 0:
         hist_pblur = hist_pblur / total_num_edges
+    else:
+        return 0.0
 
     # calculate the sharpness metric
     return np.sum(hist_pblur[:64])
@@ -214,6 +277,8 @@ def get_block_contrast(block):
 
 
 if __name__ == '__main__':
-    img = cv.imread("tid2008/filtered_images/I23_08_1.bmp", cv.IMREAD_GRAYSCALE)
-    CPBD = compute(img)
-    print("CPBD: ", CPBD)
+    img = cv.imread("tid2008/reference_images/I23.bmp", cv.IMREAD_GRAYSCALE)
+    cpbd_blur_map = compute_cpbd_blur_map(img)
+    # print("CPBD: ", cpbd)
+    cv.imshow("CPBD Blur Map", cv.normalize(cpbd_blur_map, None, 0, 1, cv.NORM_MINMAX, dtype=cv.CV_64F))
+    cv.waitKey(0)
