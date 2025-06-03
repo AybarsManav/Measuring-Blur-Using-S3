@@ -46,8 +46,8 @@ class S3:
 
                 mag_F = self.compute_magnitude_spectrum(block)
                 radial_frequencies, magnitudes = self.compute_radial_magnitude_spectrum(mag_F)
-                log_frequencies = np.log2(radial_frequencies)
-                log_magnitudes = np.log2(magnitudes)
+                log_frequencies = np.log(radial_frequencies)
+                log_magnitudes = np.log(magnitudes)
 
                 alpha, beta = self.fit_line(log_frequencies, log_magnitudes)
                 # Sample line
@@ -142,7 +142,8 @@ class S3:
     def compute_magnitude_spectrum(self, image):
         # Compute the magnitude spectrum of the image
         N = image.shape[0]
-        window = np.hanning(N)
+        window = np.hanning(N + 2) # Remove the zero elements at the beginning and end
+        window = window[1:-1]  # Remove the first and last element to match the image size
         window = np.outer(window, window)
         image = image * window
         # Compute the 2D FFT
@@ -200,8 +201,8 @@ class S3:
             z[r] = sum
 
         f = np.linspace(0, 0.5, N // 2)
-        f = f[1:-1]
-        z = z[1:-1]
+        f = f[1:]
+        z = z[1:]
         return f, z
 
     def fit_line(self, x, y):
@@ -216,9 +217,10 @@ class S3:
 
 if __name__ == "__main__":
     s3 = S3()
-    image = cv.imread("tid2008/filtered_images/I23_08_1.bmp")
+    image = cv.imread("tid2008/reference_images/I23.bmp")
 
     [s1, s2, s3, s3_metric] = s3.compute_s3(image)
+
     # Show original image and computed maps in a single figure
     def display_float_image_for_plt(img, cmap='gray'):
         norm_img = cv.normalize(img, None, 0, 1, cv.NORM_MINMAX, dtype=cv.CV_32F)
@@ -230,18 +232,19 @@ if __name__ == "__main__":
     plt.title("Original")
     plt.axis("off")
 
+    # Use 'jet' colormap (similar to MATLAB's imagesc default)
     plt.subplot(1, 4, 2)
-    plt.imshow(display_float_image_for_plt(s1), cmap='gray')
+    plt.imshow(display_float_image_for_plt(s1), cmap='jet')
     plt.title("S1")
     plt.axis("off")
 
     plt.subplot(1, 4, 3)
-    plt.imshow(display_float_image_for_plt(s2), cmap='gray')
+    plt.imshow(display_float_image_for_plt(s2), cmap='jet')
     plt.title("S2")
     plt.axis("off")
 
     plt.subplot(1, 4, 4)
-    plt.imshow(display_float_image_for_plt(s3), cmap='gray')
+    plt.imshow(display_float_image_for_plt(s3), cmap='jet')
     plt.title("S3")
     plt.axis("off")
 
