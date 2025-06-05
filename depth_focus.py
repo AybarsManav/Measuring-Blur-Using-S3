@@ -13,9 +13,8 @@ def apply_depth_based_gaussian(rgb, depth_map, focused_depth_val):
     depth_diff = np.abs(depth_map - focused_depth_val)
     sigma_range = 3
     # Normalize depth diff to be in sigma range
-    per_pixel_sigmas = (depth_diff / np.max(depth_diff)) * sigma_range
-    # Gauss filter sigmas to avoid artifacts
-    # per_pixel_sigmas = cv.GaussianBlur(per_pixel_sigmas, (11, 11), 0)
+    depth_diff_norm = depth_diff / np.max(depth_diff)
+    per_pixel_sigmas = (np.exp(depth_diff_norm) - 1) / (np.e - 1) * sigma_range
     # Loop through each pixel in the RGB image
     for i in range(rgb.shape[0]):
         for j in range(rgb.shape[1]):
@@ -40,10 +39,9 @@ if __name__ == "__main__":
 
     # Convert depth to float32
     depth = depth.astype(np.float32)
-    # Normalize depth to [0, 1]
-    # depth = (depth - np.min(depth)) / (np.max(depth) - np.min(depth))
+
     # Apply depth-based Gaussian filter
-    focused_depth_val = 51 # Example focused depth value
+    focused_depth_val = 100 # Example focused depth value
     rgb_defocused = apply_depth_based_gaussian(rgb, depth, focused_depth_val)
     # Display the result
 
