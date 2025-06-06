@@ -14,7 +14,10 @@ class S3:
 
     def compute_s3(self, image):
         # Convert the image to grayscale
-        gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+        if len(image.shape) == 3 and image.shape[2] == 3:
+            gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+        else:
+            gray = image
         gray = gray.astype(np.float32)
         s1 = self.compute_s1(gray)
         s2 = self.compute_s2(gray)

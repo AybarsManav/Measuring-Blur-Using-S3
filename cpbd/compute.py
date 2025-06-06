@@ -51,8 +51,8 @@ def compute_cpbd_blur_map(image, pad_size=32):
     stride = 8 # 56 pixels overlap according to the paper
     # Pad the image with reflective padding to avoid edge effects
     padded_image = cv.copyMakeBorder(image, pad_size, pad_size, pad_size, pad_size, cv.BORDER_REFLECT)
-    cv.imshow("Padded Image", padded_image)
-    cv.waitKey(0)
+    # cv.imshow("Padded Image", padded_image)
+    # cv.waitKey(0)
     height, width = padded_image.shape
     padded_image = padded_image.astype(np.float64)
     # In this implementation, we compute the edge map using the whole image and then

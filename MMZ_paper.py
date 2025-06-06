@@ -40,7 +40,6 @@ class BlurDetector(object):
         seg_v = (height-block_size)//step + 1
         seg_h = (width-block_size)//step + 1
     
-        print(seg_h)
         blur_grid = np.zeros((seg_v, seg_h))
 
         for v in range(seg_v):
