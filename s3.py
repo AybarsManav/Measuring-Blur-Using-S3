@@ -1,14 +1,7 @@
 import cv2 as cv
 import numpy as np
+import time
 import matplotlib.pyplot as plt
-
-def display_float_image(image):
-    # Normalize the image to the range [0, 255]
-    norm_image = cv.normalize(image, None, 0, 255, cv.NORM_MINMAX)
-    norm_image = np.uint8(norm_image)
-    cv.imshow("Normalized Image", norm_image)
-    cv.waitKey(0)
-    cv.destroyAllWindows()
 
 class S3:
 
@@ -21,6 +14,7 @@ class S3:
         gray = gray.astype(np.float32)
         s1 = self.compute_s1(gray)
         s2 = self.compute_s2(gray)
+
         # Take the geometric mean of s1 and s2
         s3 = np.sqrt(s1) * np.sqrt(s2)
         # Compute single number s3
@@ -226,7 +220,7 @@ if __name__ == "__main__":
 
     # Show original image and computed maps in a single figure
     def display_float_image_for_plt(img, cmap='gray'):
-        norm_img = cv.normalize(img, None, 0, 1, cv.NORM_MINMAX, dtype=cv.CV_32F)
+        norm_img =  (img * 255).astype(np.uint8)  # Scale to [0, 255] for display
         return norm_img
 
     plt.figure(figsize=(12, 6))

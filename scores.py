@@ -6,6 +6,18 @@ from s3 import *
 from MMZ_paper import *
 from cpbd.compute import *
 import os
+from scipy.optimize import curve_fit
+
+def fit_and_transform(x, y):
+    # Define the logistic function
+    def f(x, tau1, tau2, tau3, tau4):
+        return (tau1 - tau2) / (1 + np.exp((x - tau3) / tau4)) + tau2
+
+    initial_guess = [1, 0.1, 0.1, 1]
+    popt, _ = curve_fit(f, x, y, p0=initial_guess, maxfev=10000)
+    tau1, tau2, tau3, tau4 = popt
+    x_transformed = f(x, tau1, tau2, tau3, tau4)
+    return x_transformed
 
 def compute_correlation_scores():
     mos_path = 'tid2008/mos_with_names.txt'  
@@ -42,7 +54,7 @@ def compute_correlation_scores():
 
                 # Calculate sharpness using S3
                 s3_detector = S3()
-                sharpness_score_s3 = s3_detector.compute_s3(image)
+                sharpness_score_s3 = s3_detector.compute_s3(image)[3]
 
                 # Calculate sharpness using MMZ
                 bd = BlurDetector()
@@ -55,15 +67,7 @@ def compute_correlation_scores():
                 sharpness_scores_mmz.append(score_mmz)
                 sharpness_scores_cpbd.append(cpbd_score)
                 
-    # Compute correlation coefficients for different methods
-    plcc_s3, _ = pearsonr(mos_values, sharpness_scores_s3)
-    plcc_mmz, _ = pearsonr(mos_values, sharpness_scores_mmz)
-    plcc_cpbd, _ = pearsonr(mos_values, sharpness_scores_cpbd)
-
-    srcc_s3, _ = spearmanr(mos_values, sharpness_scores_s3)
-    srcc_mmz, _ = spearmanr(mos_values, sharpness_scores_mmz)
-    srcc_cpbd, _ = spearmanr(mos_values, sharpness_scores_cpbd)
-
+                
     # Save results to a CSV file
     results_df = pd.DataFrame({
         'MOS': mos_values,
@@ -72,6 +76,20 @@ def compute_correlation_scores():
         'CPBD_Sharpness': sharpness_scores_cpbd
     })
     results_df.to_csv('sharpness_scores.csv', index=False)
+
+    # Fit and transform the MOS values
+    s3_scores_transformed = fit_and_transform(sharpness_scores_s3, mos_scores)
+    mmz_scores_transformed = fit_and_transform(sharpness_scores_mmz, mos_scores)
+    cpbd_scores_transformed = fit_and_transform(sharpness_scores_cpbd, mos_scores)
+
+    # Compute correlation coefficients for different methods
+    plcc_s3, _ = pearsonr(mos_values, s3_scores_transformed)
+    plcc_mmz, _ = pearsonr(mos_values, mmz_scores_transformed)
+    plcc_cpbd, _ = pearsonr(mos_values, cpbd_scores_transformed)
+
+    srcc_s3, _ = spearmanr(mos_values, s3_scores_transformed)
+    srcc_mmz, _ = spearmanr(mos_values, mmz_scores_transformed)
+    srcc_cpbd, _ = spearmanr(mos_values, cpbd_scores_transformed)
 
     # Save correlation results to a CSV file
     correlation_results = pd.DataFrame({
