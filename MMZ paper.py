@@ -70,7 +70,7 @@ class BlurDetector(object):
 
 if __name__ == "__main__":
     bd = BlurDetector()
-    image = cv2.imread('parrots.jpeg')
+    image = cv2.imread('running.png')
     if image is None:
         print('Image file does not exist!')
     else:
@@ -90,4 +90,4 @@ if __name__ == "__main__":
         plt.imshow((sharpness_grid * 255).astype(np.uint8) ,cmap='gray')
 
         plt.show()      
-        cv2.imwrite('parrots_mmz.jpeg', (sharpness_grid * 255).astype(np.uint8))
+        cv2.imwrite('running_mmz.jpeg', (sharpness_grid * 255).astype(np.uint8))
