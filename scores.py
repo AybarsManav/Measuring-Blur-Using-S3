@@ -78,9 +78,9 @@ def compute_correlation_scores():
     results_df.to_csv('sharpness_scores.csv', index=False)
 
     # Fit and transform the MOS values
-    s3_scores_transformed = fit_and_transform(sharpness_scores_s3, mos_scores)
-    mmz_scores_transformed = fit_and_transform(sharpness_scores_mmz, mos_scores)
-    cpbd_scores_transformed = fit_and_transform(sharpness_scores_cpbd, mos_scores)
+    s3_scores_transformed = fit_and_transform(sharpness_scores_s3, mos_values)
+    mmz_scores_transformed = fit_and_transform(sharpness_scores_mmz, mos_values)
+    cpbd_scores_transformed = fit_and_transform(sharpness_scores_cpbd, mos_values)
 
     # Compute correlation coefficients for different methods
     plcc_s3, _ = pearsonr(mos_values, s3_scores_transformed)
